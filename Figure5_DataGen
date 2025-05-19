@@ -1,0 +1,175 @@
+library(dplyr)
+library(ggpubr)
+library(heatwaveR)
+library(readxl)
+library(tools)
+library(lubridate)
+
+# Define the list of river folders
+river_folders <- c(
+   '0-Restigouche_DataGrass',  '0-Miramichi_DataGrass',  '0-MiramichiNW_DataGrass', 
+   '0-Matapedia_DataGrass',  '0-Upsalquitch_DataGrass',
+    '0-AuxMelezes_DataGrass', '0-Bear_DataGrass', '0-Bonaventure_DataGrass',
+    '0-Casca_DataGrass', '0-Conne_DataGrass', '0-Dartmouth_DataGrass',
+    '0-Ducktrap_DataGrass', '0-Gilbert_DataGrass', '0-Godbout_DataGrass',
+    '0-Gouffre_DataGrass', '0-Havre_DataGrass', '0-Highland_DataGrass',
+    '0-Huile_DataGrass', '0-Jupiter_DataGrass', '0-Margaree_DataGrass',
+    '0-Moisie_DataGrass', '0-Narragagus_DataGrass',
+    '0-Natash_DataGrass', 
+    '0-Ouelle_DataGrass',
+    '0-Pcasca_DataGrass', 
+    '0-Sackville_DataGrass', '0-Sheepscot_DataGrass', '0-SteAnne_DataGrass',
+    '0-SteMarg_DataGrass', '0-StLewis_DataGrass', 
+    '0-Wilmot_DataGrass', '0-Carruthers_DataGrass', '0-Nouvelle_DataGrass', '0-Reid_DataGrass', '0-West_DataGrass'
+)
+
+# Define model fields
+model_fields <- c("M_CanESM5", "M_CMCC_ESM2", "M_MPI_ESM1_2_HR", "M_MPI_ESM1_2_LR", "M_NorESM2_LM", "M_NorESM2_MM")
+
+# Define the scenarios
+scenarios <- c("ssp370", "ssp585")
+
+# Define the base path
+base_path <- "C:/Users/Utilisateur/OneDrive - INRS/Documents/ilias/0-Cequeau_Cal"
+
+# Loop over all river folders
+for (river_folder in river_folders) {
+  river_name <- gsub("0-", "", gsub("_DataGrass", "", river_folder))
+  river_path <- file.path(base_path, river_folder, paste0('0-Pyceq_', river_name))
+
+
+  # Set default threshold
+  threshold_value <- 20
+  
+  # Adjust threshold for specific rivers
+  if (river_folder == '0-Carruthers_DataGrass') {
+      threshold_value <- 16
+  } else if (river_folder == '0-Nouvelle_DataGrass') {
+      threshold_value <- 18
+  } else if (river_folder == '0-Reid_DataGrass') {
+      threshold_value <- 19
+  } else if (river_folder == '0-West_DataGrass') {
+      threshold_value <- 16
+  }
+  
+  # Loop over each model
+  for (model_field in model_fields) {
+    model_folder <- file.path(river_path, model_field)
+    
+    # Loop over each scenario
+    for (scenario in scenarios) {
+      # Create the Excel filename
+      excel_filename <- file.path(model_folder, paste0('globo_rhw_', river_name, '_', scenario, '.xlsx'))
+      
+      # Check if the Excel file exists
+      if (!file.exists(excel_filename)) {
+        warning(paste("File", excel_filename, "does not exist. Skipping."))
+        next
+      }
+      
+      # Read the Excel file
+      df <- read_excel(excel_filename)
+      
+      # Convert 't' to Date format
+      df <- df %>%
+        mutate(t = as.Date(t, format = "%Y-%m-%d"))
+      
+      # Convert tibble to data.frame
+      df <- as.data.frame(df)
+      
+      # The tMax threshold
+      tMax_clim <- ts2clm(data = df, y = temp, climatologyPeriod = c("1980-01-01", "2010-12-31"), pctile = 90)
+
+      #Without Tmin flat
+      # events <- detect_event(data = tMax_clim, y = temp, categories = TRUE, climatology = TRUE, S=FALSE)
+
+      # # Or with Tmin :
+      # # The tMin exceedance
+      tMin_exc <- exceedance(data = df, y = temp, threshold =threshold_value)$threshold
+      
+      # #Detect events
+      events <- detect_event(data = tMax_clim, y = temp, minDuration = 5, maxGap = 2, categories = TRUE, climatology = TRUE, S=FALSE)
+                      #  threshClim2 = tMin_exc$exceedance, minDuration2 = 2, maxGap2 = 0)
+
+      # Convert date columns to Date format
+      events$event <- events$event %>%
+        mutate(
+          date_start = as.Date(date_start, origin = "1970-01-01"),
+          date_peak = as.Date(date_peak, origin = "1970-01-01"),
+          date_end = as.Date(date_end, origin = "1970-01-01")
+        )
+
+      # Filter events to include only those where date_peak is in June to September
+      events$event <- events$event %>%
+        filter(month(date_peak) %in% 6:9)
+
+
+      # Extract the event data
+      event_data <- events$event
+      
+      # Create a full sequence of years based on the data
+      all_years <- seq(min(as.integer(format(df$t, "%Y"))), max(as.integer(format(df$t, "%Y"))))
+      
+      # Calculate yearly statistics with full years
+      yearly_stats <- event_data %>%
+        mutate(year = as.integer(format(date_start, "%Y"))) %>%
+        group_by(year) %>%
+        summarize(
+          ann_mean = mean(intensity_mean_relThresh, na.rm = TRUE),
+          ann_av_dur = mean(duration, na.rm = TRUE),
+          ann_dur = sum(duration, na.rm = TRUE),
+          ann_mod = sum(p_moderate, na.rm = TRUE),
+          ann_str = sum(p_strong, na.rm = TRUE),
+          ann_ex = sum(p_extreme, na.rm = TRUE),
+          ann_sev = sum(p_severe, na.rm = TRUE),
+          ann_winter = sum(season == "Winter", na.rm = TRUE),
+          ann_spring = sum(season == "Spring", na.rm = TRUE),
+          ann_summer = sum(season == "Summer", na.rm = TRUE),
+          ann_fall = sum(season == "Fall", na.rm = TRUE),
+          ann_winter_spring = sum(season == "Winter/Spring", na.rm = TRUE),
+          ann_spring_summer = sum(season == "Spring/Summer", na.rm = TRUE),
+          ann_summer_fall = sum(season == "Summer/Fall", na.rm = TRUE),
+          ann_fall_winter = sum(season == "Fall/Winter", na.rm = TRUE),
+          ann_winter_summer = sum(season == "Winter-Summer", na.rm = TRUE),
+          ann_spring_fall = sum(season == "Spring-Fall", na.rm = TRUE),
+          ann_summer_winter = sum(season == "Summer-Winter", na.rm = TRUE),
+          ann_fall_spring = sum(season == "Fall-Spring", na.rm = TRUE),
+          ann_year_round = sum(season == "Year-round", na.rm = TRUE),
+          ann_cum_intensity = mean(intensity_cumulative_relThresh, na.rm = TRUE)
+        ) %>%
+        right_join(data.frame(year = all_years), by = "year") %>%
+        mutate(
+          ann_mean = ifelse(is.na(ann_mean), NA, ann_mean),
+          ann_av_dur = ifelse(is.na(ann_av_dur), 0, ann_av_dur),
+          ann_dur = ifelse(is.na(ann_dur), 0, ann_dur),
+          ann_mod = ifelse(is.na(ann_mod), 0, ann_mod),
+          ann_str = ifelse(is.na(ann_str), 0, ann_str),
+          ann_ex = ifelse(is.na(ann_ex), 0, ann_ex),
+          ann_sev = ifelse(is.na(ann_sev), 0, ann_sev),
+          ann_winter = ifelse(is.na(ann_winter), 0, ann_winter),
+          ann_spring = ifelse(is.na(ann_spring), 0, ann_spring),
+          ann_summer = ifelse(is.na(ann_summer), 0, ann_summer),
+          ann_fall = ifelse(is.na(ann_fall), 0, ann_fall),
+          ann_winter_spring = ifelse(is.na(ann_winter_spring), 0, ann_winter_spring),
+          ann_spring_summer = ifelse(is.na(ann_spring_summer), 0, ann_spring_summer),
+          ann_summer_fall = ifelse(is.na(ann_summer_fall), 0, ann_summer_fall),
+          ann_fall_winter = ifelse(is.na(ann_fall_winter), 0, ann_fall_winter),
+          ann_winter_summer = ifelse(is.na(ann_winter_summer), 0, ann_winter_summer),
+          ann_spring_fall = ifelse(is.na(ann_spring_fall), 0, ann_spring_fall),
+          ann_summer_winter = ifelse(is.na(ann_summer_winter), 0, ann_summer_winter),
+          ann_fall_spring = ifelse(is.na(ann_fall_spring), 0, ann_fall_spring),
+          ann_year_round = ifelse(is.na(ann_year_round), 0, ann_year_round)
+        ) %>%
+        arrange(year) %>%
+        ungroup()
+      
+      # Create the output CSV filename
+      csv_filename <- file.path(model_folder, paste0('globo_rhw_', river_name, '_', scenario, '.csv'))
+      
+      # Write the yearly statistics to a CSV file
+      write.csv(yearly_stats, csv_filename, row.names = FALSE)
+      
+      message(paste("Processed", csv_filename))
+    }
+  }
+}
