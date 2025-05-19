@@ -168,8 +168,229 @@ for (river_folder in river_folders) {
       
       # Write the yearly statistics to a CSV file
       write.csv(yearly_stats, csv_filename, row.names = FALSE)
-      
+
+
       message(paste("Processed", csv_filename))
     }
   }
 }
+
+
+
+
+## Part 2
+
+# Define model fields
+model_fields <- c("M_CanESM5", "M_CMCC_ESM2", "M_MPI_ESM1_2_HR", "M_MPI_ESM1_2_LR", "M_NorESM2_LM", "M_NorESM2_MM")
+
+# Define the base paths
+base_path <- "C:/Users/Utilisateur/OneDrive - INRS/Documents/ilias/0-Cequeau_Cal"
+output_path <- "C:/Users/Utilisateur/OneDrive - INRS/Documents/ilias/Woolway_Nature_MatlabCode"
+
+# Ensure the output directory exists
+dir_create(output_path)
+
+# Loop over each model to create directories and move files
+for (model_field in model_fields) {
+  # Create a folder for the model if it doesn't exist
+  model_folder_path <- file.path(output_path, model_field)
+  dir_create(model_folder_path)
+  
+  # Loop over all river folders to move CSV files
+  for (river_folder in river_folders) {
+    river_name <- gsub("0-", "", gsub("_DataGrass", "", river_folder))
+    river_path <- file.path(base_path, river_folder, paste0('0-Pyceq_', river_name))
+    
+    # Loop over each scenario
+    scenarios <- c("ssp370", "ssp585")
+    for (scenario in scenarios) {
+      # Define the source CSV filename
+      csv_filename <- file.path(river_path, model_field, paste0('globo_rhw_', river_name, '_', scenario, '.csv'))
+      
+      # Check if the CSV file exists
+      if (file_exists(csv_filename)) {
+        # Define the destination path in the model folder
+        dest_filename <- file.path(model_folder_path, paste0('globo_rhw_', river_name, '_', scenario, '.csv'))
+        
+        # Move the file to the model folder
+        file_move(csv_filename, dest_filename)
+        
+        message(paste("Moved", csv_filename, "to", dest_filename))
+      } else {
+        warning(paste("File", csv_filename, "does not exist. Skipping."))
+      }
+    }
+  }
+}
+
+
+## Part3
+## River Name Extraction: The script extracts the river name from the CSV filenames.
+# 'ID Assignment:
+# It checks if the river name has already been assigned an ID.
+# If not, it assigns a new ID and increments the id_counter.
+# The river_id_map list stores the mapping of river names to their assigned IDs.
+# Consistent Naming: When renaming the files, the script uses the same ID for files corresponding to the same river, 
+# regardless of the scenario (ssp370 or ssp585).'
+
+library(fs)
+
+# Define model fields
+model_fields <- c("M_CanESM5", "M_CMCC_ESM2", "M_MPI_ESM1_2_HR", "M_MPI_ESM1_2_LR", "M_NorESM2_LM", "M_NorESM2_MM")
+
+# Define the base output path
+output_path <- "C:/Users/Utilisateur/OneDrive - INRS/Documents/ilias/Woolway_Nature_MatlabCode"
+
+# Initialize a list to store the ID assignments for each river
+river_id_map <- list()
+
+# Initialize the ID counter
+id_counter <- 1
+
+# Loop over each model folder
+for (model_field in model_fields) {
+  # Get the model folder path
+  model_folder_path <- file.path(output_path, model_field)
+  
+  # List all CSV files in the model folder
+  csv_files <- dir_ls(model_folder_path, glob = "*.csv")
+  
+  # Loop over each CSV file
+  for (csv_file in csv_files) {
+    # Extract the river name from the filename
+    river_name <- sub("globo_rhw_(.*?)_ssp.*\\.csv", "\\1", basename(csv_file))
+    
+    # Check if this river has already been assigned an ID
+    if (!river_name %in% names(river_id_map)) {
+      # Assign a new ID to this river
+      river_id_map[[river_name]] <- id_counter
+      id_counter <- id_counter + 1
+    }
+    
+    # Retrieve the assigned ID for this river
+    river_id <- river_id_map[[river_name]]
+    
+    # Extract the scenario from the filename (e.g., 'ssp370' or 'ssp585')
+    scenario <- ifelse(grepl("ssp370", csv_file), "ssp370", "ssp585")
+    
+    # Create the new filename with the ID
+    new_filename <- paste0("globo_rhw_", river_id, "_", scenario, ".csv")
+    new_file_path <- file.path(model_folder_path, new_filename)
+    
+    # Rename the file
+    file_move(csv_file, new_file_path)
+    
+    # Print a message to indicate the renaming
+    message(paste("Renamed", csv_file, "to", new_file_path))
+  }
+}
+
+# Print the mapping of river names to IDs for reference
+print(river_id_map)
+
+
+# $AuxMelezes
+# [1] 1
+
+# $Bear
+# [1] 2
+
+# $Bonaventure
+# [1] 3
+
+# $Carruthers
+# [1] 4
+
+# $Casca
+# [1] 5
+
+# $Conne
+# [1] 6
+
+# $Dartmouth
+# [1] 7
+
+# $Ducktrap
+# [1] 8
+
+# $Gilbert
+# [1] 9
+
+# $Godbout
+# [1] 10
+
+# $Gouffre
+# [1] 11
+
+# $Havre
+# [1] 12
+
+# $Highland
+# [1] 13
+
+# $Huile
+# [1] 14
+
+# $Jupiter
+# [1] 15
+
+# $Margaree
+# [1] 16
+
+# $Matapedia
+# [1] 17
+
+# $MiramichiNW
+# [1] 18
+
+# $Miramichi
+# [1] 19
+
+# $Moisie
+# [1] 20
+
+# $Narragagus
+# [1] 21
+
+# $Natash
+# [1] 22
+
+# $Nouvelle
+# [1] 23
+
+# $Ouelle
+# [1] 24
+
+# $Pcasca
+# [1] 25
+
+# $Reid
+# [1] 26
+
+# $Restigouche
+# [1] 27
+
+# $Sackville
+# [1] 28
+
+# $Sheepscot
+# [1] 29
+
+# $SteAnne
+# [1] 30
+
+# $SteMarg
+# [1] 31
+
+# $StLewis
+# [1] 32
+
+# $Upsalquitch
+# [1] 33
+
+# $West
+# [1] 34
+
+# $Wilmot
+# [1] 35
+
