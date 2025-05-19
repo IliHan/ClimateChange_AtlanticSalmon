@@ -1,0 +1,858 @@
+%% TDF Surface Plots for All Rivers (ssp370 Scenario) with Stationary and Non-Stationary Models
+
+% Define the list of river folders
+% river_folders = {
+%     '0-Sheepscot_DataGrass', '0-Restigouche_DataGrass','0-MiramichiNW_DataGrass', ...
+%     '0-Miramichi_DataGrass', '0-Matapedia_DataGrass', '0-Upsalquitch_DataGrass', ...
+%     '0-AuxMelezes_DataGrass', '0-Bear_DataGrass', '0-Bonaventure_DataGrass', ...
+%     '0-Casca_DataGrass', '0-Conne_DataGrass', '0-Dartmouth_DataGrass', ...
+%     '0-Ducktrap_DataGrass', '0-Gilbert_DataGrass', '0-Godbout_DataGrass', ...
+%     '0-Gouffre_DataGrass', '0-Havre_DataGrass', '0-Highland_DataGrass', ...
+%     '0-Huile_DataGrass', '0-Jupiter_DataGrass', '0-Margaree_DataGrass', ...
+%     '0-Moisie_DataGrass', '0-Narragagus_DataGrass', '0-Natash_DataGrass', ...
+%     '0-Ouelle_DataGrass', '0-Pcasca_DataGrass', '0-Sackville_DataGrass', ...
+%     '0-SteAnne_DataGrass', '0-SteMarg_DataGrass', '0-StLewis_DataGrass', ...
+%     '0-Wilmot_DataGrass', '0-Reid_DataGrass', '0-Carruthers_DataGrass', ...
+%     '0-Nouvelle_DataGrass', '0-West_DataGrass'
+% };
+
+
+% Define the list of river folders
+river_folders = {
+    '0-Sheepscot_DataGrass', '0-Narragagus_DataGrass', '0-Restigouche_DataGrass', ...
+    '0-Miramichi_DataGrass', '0-Wilmot_DataGrass', '0-Carruthers_DataGrass', ...
+    '0-AuxMelezes_DataGrass', '0-Gilbert_DataGrass', '0-Ouelle_DataGrass', ...
+    '0-SteMarg_DataGrass'
+};
+
+% Define model fields
+model_fields = {'M_CanESM5', 'M_CMCC_ESM2', 'M_MPI_ESM1_2_HR', ...
+                'M_MPI_ESM1_2_LR', 'M_NorESM2_LM', 'M_NorESM2_MM'};
+
+% Define the scenario
+scenario = 'ssp370';
+
+% Define the base path
+base_path = 'C:/Users/Utilisateur/OneDrive - INRS/Documents/ilias/0-Cequeau_Cal';
+
+
+% Define parameters
+D = 7; % Number of durations
+durations = [1, 2, 3, 4, 5, 6, 7]; % Durations in days
+R_values = [2, 5, 10, 25, 50, 100]; % Return periods
+
+% Initialize a structure to store results for all rivers and scenarios
+All_Rivers_Results_Table = table();
+
+% Determine subplot grid size
+num_rivers = length(river_folders);
+rows = ceil(sqrt(num_rivers));
+cols = ceil(num_rivers / rows);
+
+% Initialize figure for all subplots
+figure('Name', 'TDF Surfaces', 'Position', [100, 100, 1500, 800]);
+
+% Define colors and initialize legend variables before the river loop
+colors = lines(length(R_values));
+h_return = gobjects(length(R_values),1);
+legend_labels = arrayfun(@(R) ['R = ', num2str(R)], R_values, 'UniformOutput', false);
+
+% Initialize storage for T_return_levels for all rivers
+All_T_return_levels_ns = cell(num_rivers, 1);
+All_T_return_levels_s = cell(num_rivers, 1);
+
+% Loop over rivers
+for river_idx = 1:num_rivers
+    river_folder = river_folders{river_idx};
+    % Extract river name
+    river_name = strrep(strrep(river_folder, '0-', ''), '_DataGrass', '');
+    disp(['Processing river: ', river_name]);
+    river_path = fullfile(base_path, river_folder, ['0-Pyceq_', river_name]);
+    
+    % Initialize variables to store data for surface plot
+    % We'll collect data for each return period
+    T_return_levels_ns = cell(length(R_values), 1); % Non-Stationary
+    T_return_levels_s = cell(length(R_values), 1); % Stationary
+    
+    % Initialize table to store best models for this river
+    Results_Table = table();
+    
+    % Initialize variables to hold combined data across models
+    combined_dates = [];
+    temp_matrix = [];
+    
+    % Loop over models
+    for model_idx = 1:length(model_fields)
+        model_field = model_fields{model_idx};
+        % Construct the file name
+        filename = fullfile(river_path, model_field, ['globo_rhw_', river_name, '_', scenario, '.xlsx']);
+        if ~exist(filename, 'file')
+            warning(['File not found: ', filename]);
+            continue;
+        end
+        % Read data from the Excel file
+        raw_data = readtable(filename);
+        % Extract time and temperature columns
+        dates = datetime(raw_data.t, 'InputFormat', 'yyyy-MM-dd HH:mm:ss');
+        temp = raw_data.temp;
+        % Align dates and temperatures
+        if isempty(combined_dates)
+            combined_dates = dates;
+            temp_matrix = temp;
+        else
+            % Check if dates match
+            if length(dates) ~= length(combined_dates) || any(dates ~= combined_dates)
+                warning('Dates do not match across models for river %s, scenario %s', river_name, scenario);
+                continue;
+            else
+                temp_matrix = [temp_matrix, temp];
+            end
+        end
+    end % End of models loop
+    
+    % Check if we have data
+    if isempty(temp_matrix)
+        warning('No data available for river %s, scenario %s', river_name, scenario);
+        continue;
+    end
+    
+    % Compute average temperature across models
+    avg_temp = mean(temp_matrix, 2);
+    
+    % Proceed with TDF curve computation using avg_temp
+    
+    % Extract unique years
+    unique_years = unique(year(combined_dates));
+    n_total_years = length(unique_years); % Total number of unique years
+    t_max_avg = NaN(n_total_years, D); % Maximum average temperatures per year and duration
+    
+    % Adjust dates to correspond with moving average
+    % For each duration, compute moving average and adjust dates
+    for k = 1:D
+        d = durations(k);
+        % Filter data for JJAS months
+        idx_summer = ismember(month(combined_dates), 6:9);
+        dates_summer = combined_dates(idx_summer);
+        temp_summer = avg_temp(idx_summer);
+        
+        % Compute moving average on summer data
+        temp_moving_avg = movmean(temp_summer, d, 'Endpoints', 'discard');
+        
+        % Adjust dates to match temp_moving_avg
+        dates_moving_avg = dates_summer(ceil(d/2):end - floor(d/2));
+        
+        % Check that lengths match
+        if length(temp_moving_avg) ~= length(dates_moving_avg)
+            error('Length mismatch between temp_moving_avg and dates_moving_avg for duration d = %d', d);
+        end
+        
+        % For each year, extract the maximum moving average temperature
+        for l = 1:n_total_years
+            current_year = unique_years(l);
+            idx_year = year(dates_moving_avg) == current_year;
+            if any(idx_year)
+                t_max_avg(l, k) = max(temp_moving_avg(idx_year));
+            else
+                warning('No data for year %d during JJAS.', current_year);
+            end
+        end
+    end
+
+    % Remove any NaN entries (years with insufficient data)
+    valid_idx = all(~isnan(t_max_avg), 2);
+    t_max_avg = t_max_avg(valid_idx, :);
+    unique_years_valid = unique_years(valid_idx);
+    n = length(unique_years_valid); % Number of valid years
+    U = unique_years_valid - unique_years_valid(1);
+
+    %% Use data only up to 2020
+    % Find indices of years up to 2020
+    years_to_use_idx = unique_years_valid <= 2020;
+    t_max_avg = t_max_avg(years_to_use_idx, :);
+    unique_years_valid = unique_years_valid(years_to_use_idx);
+    n = length(unique_years_valid);
+    U = unique_years_valid - unique_years_valid(1);
+    
+    %% Define Models to Consider
+    mu_models = {'Stationary', 'Linear', 'Quadratic'};
+    sigma_models = {'Stationary', 'Linear'};
+    num_mu_models = length(mu_models);
+    num_sigma_models = length(sigma_models);
+    
+    % Store results
+    results = struct();
+    
+    % Loop over combinations of models
+    model_idx_counter = 1;
+    for mu_model = 1:num_mu_models
+        for sigma_model = 1:num_sigma_models
+            %% Parameter Initialization
+            initial_kappa = 0.1; % Small positive value
+            initial_theta = 1;
+            initial_eta = 0.5;
+            
+            b_initial = (durations + initial_theta).^initial_eta;
+            initial_Y = t_max_avg .* b_initial;
+            
+            % Initialize parameter vectors based on the model
+            params = [];
+            param_names = {};
+            lb = [];
+            ub = [];
+            
+            % Parameters for mu
+            switch mu_model
+                case 1 % Stationary
+                    initial_mu0 = mean(initial_Y, 1);
+                    params = [params, initial_mu0];
+                    param_names = [param_names, strcat('mu0_', string(1:D))];
+                    lb = [lb, -Inf(1, D)];
+                    ub = [ub, Inf(1, D)];
+                case 2 % Linear
+                    initial_mu0 = mean(initial_Y, 1);
+                    initial_mu1 = zeros(1, D);
+                    params = [params, initial_mu0, initial_mu1];
+                    param_names = [param_names, strcat('mu0_', string(1:D)), strcat('mu1_', string(1:D))];
+                    lb = [lb, -Inf(1, D), -Inf(1, D)];
+                    ub = [ub, Inf(1, D), Inf(1, D)];
+                case 3 % Quadratic
+                    initial_mu0 = mean(initial_Y, 1);
+                    initial_mu1 = zeros(1, D);
+                    initial_mu2 = zeros(1, D);
+                    params = [params, initial_mu0, initial_mu1, initial_mu2];
+                    param_names = [param_names, strcat('mu0_', string(1:D)), strcat('mu1_', string(1:D)), strcat('mu2_', string(1:D))];
+                    lb = [lb, -Inf(1, D), -Inf(1, D), -Inf(1, D)];
+                    ub = [ub, Inf(1, D), Inf(1, D), Inf(1, D)];
+            end
+            
+            % Parameters for sigma
+            switch sigma_model
+                case 1 % Stationary
+                    initial_sigma0 = std(initial_Y, 0, 1);
+                    params = [params, initial_sigma0];
+                    param_names = [param_names, strcat('sigma0_', string(1:D))];
+                    lb = [lb, 1e-3 * ones(1, D)]; % sigma0_d > 0
+                    ub = [ub, Inf(1, D)];
+                case 2 % Linear
+                    initial_sigma0 = std(initial_Y, 0, 1);
+                    initial_sigma1 = zeros(1, D);
+                    params = [params, initial_sigma0, initial_sigma1];
+                    param_names = [param_names, strcat('sigma0_', string(1:D)), strcat('sigma1_', string(1:D))];
+                    lb = [lb, 1e-3 * ones(1, D), -Inf(1, D)]; % sigma0_d > 0
+                    ub = [ub, Inf(1, D), Inf(1, D)];
+            end
+            
+            % Common parameters kappa, theta, eta
+            params = [params, initial_kappa, initial_theta, initial_eta];
+            param_names = [param_names, 'kappa', 'theta', 'eta'];
+            lb = [lb, -Inf, 1e-3, 1e-3]; % No bounds on kappa, theta > 0, eta > 0
+            ub = [ub, Inf, Inf, 1 - 1e-3]; % eta < 1
+            
+            num_params = length(params);
+            
+            %% Negative Composite Log-Likelihood Function
+            neg_composite_log_likelihood = @(params) compute_neg_cll(params, t_max_avg, U, durations, D, n, mu_model, sigma_model);
+            
+            %% Optimization Options
+            options = optimoptions('fmincon', 'Algorithm', 'sqp', ...
+                'Display', 'off', 'MaxIterations', 1000, 'MaxFunctionEvaluations', 1e6, ...
+                'OptimalityTolerance', 1e-6, 'StepTolerance', 1e-9, 'FiniteDifferenceType', 'central');
+            
+            %% Perform Optimization
+            [params_est, fval, exitflag, output, lambda, grad, hessian] = fmincon(neg_composite_log_likelihood, ...
+                params, [], [], [], [], lb, ub, [], options);
+            
+            %% Check Optimization Status
+            if exitflag <= 0
+                warning('Optimization may not have converged for Model %d.', model_idx_counter);
+            end
+            
+            %% Compute CL-AIC and CL-BIC
+            [CL_AIC, CL_BIC] = compute_claic_clbic(params_est, t_max_avg, U, durations, D, n, mu_model, sigma_model, hessian);
+            
+            %% Store Results
+            results(model_idx_counter).mu_model = mu_models{mu_model};
+            results(model_idx_counter).sigma_model = sigma_models{sigma_model};
+            results(model_idx_counter).params_est = params_est;
+            results(model_idx_counter).fval = fval;
+            results(model_idx_counter).CL_AIC = CL_AIC;
+            results(model_idx_counter).CL_BIC = CL_BIC;
+            results(model_idx_counter).param_names = param_names;
+            results(model_idx_counter).exitflag = exitflag;
+            results(model_idx_counter).output = output;
+            
+            model_idx_counter = model_idx_counter + 1;
+        end
+    end
+    
+    %% Select Best Non-Stationary Model Based on CL-AIC
+    % Exclude the stationary model (mu_model = 'Stationary' and sigma_model = 'Stationary')
+    non_stationary_indices = find(~(strcmp({results.mu_model}, 'Stationary') & strcmp({results.sigma_model}, 'Stationary')));
+    [~, min_ns_idx] = min([results(non_stationary_indices).CL_AIC]);
+    best_ns_idx = non_stationary_indices(min_ns_idx);
+    best_ns_model = results(best_ns_idx);
+    
+    %% Find the Stationary Model
+    stationary_idx = find(strcmp({results.mu_model}, 'Stationary') & strcmp({results.sigma_model}, 'Stationary'));
+    stationary_model = results(stationary_idx);
+    
+    %% Collect data for the table
+    % For Non-Stationary Model
+    Model_Name_ns = 'Non-Stationary';
+    l_ind_ns = -best_ns_model.fval;
+    CL_AIC_vals_ns = best_ns_model.CL_AIC;
+    % Construct model parameter formula for the best non-stationary model
+    % For mu
+    switch best_ns_model.mu_model
+        case 'Stationary'
+            mu_formula_ns = 'μ(l) = μ0_d';
+        case 'Linear'
+            mu_formula_ns = 'μ(l) = μ0_d + μ1_d * U(l)';
+        case 'Quadratic'
+            mu_formula_ns = 'μ(l) = μ0_d + μ1_d * U(l) + μ2_d * U(l)^2';
+    end
+    % For sigma
+    switch best_ns_model.sigma_model
+        case 'Stationary'
+            sigma_formula_ns = 'σ(l) = σ0_d';
+        case 'Linear'
+            sigma_formula_ns = 'σ(l) = σ0_d + σ1_d * U(l)';
+    end
+    Model_Parameters_ns = {[mu_formula_ns, ', ', sigma_formula_ns]};
+    
+    % For Stationary Model
+    Model_Name_s = 'Stationary';
+    l_ind_s = -stationary_model.fval;
+    CL_AIC_vals_s = stationary_model.CL_AIC;
+    % Construct model parameter formula for the stationary model
+    mu_formula_s = 'μ(l) = μ0_d';
+    sigma_formula_s = 'σ(l) = σ0_d';
+    Model_Parameters_s = {[mu_formula_s, ', ', sigma_formula_s]};
+    
+    % Extract parameter names and estimates for the stationary model
+    param_names_s = stationary_model.param_names;
+    params_est_s = stationary_model.params_est;
+    % Create a cell array of parameter estimates
+    Param_Estimates_s = cell(length(param_names_s), 1);
+    for i = 1:length(param_names_s)
+        Param_Estimates_s{i} = [param_names_s{i}, ' = ', num2str(params_est_s(i))];
+    end
+    % Combine into a single string
+    Param_Estimates_s_str = strjoin(Param_Estimates_s, '; ');
+    
+    % Extract parameter names and estimates for the best non-stationary model
+    param_names_ns = best_ns_model.param_names;
+    params_est_ns = best_ns_model.params_est;
+    % Create a cell array of parameter estimates
+    Param_Estimates_ns = cell(length(param_names_ns), 1);
+    for i = 1:length(param_names_ns)
+        Param_Estimates_ns{i} = [param_names_ns{i}, ' = ', num2str(params_est_ns(i))];
+    end
+    % Combine into a single string
+    Param_Estimates_ns_str = strjoin(Param_Estimates_ns, '; ');
+    
+    % Create table for both models
+    Scenario = repmat({scenario}, 2, 1);
+    River = repmat({river_name}, 2, 1);
+    Model = {Model_Name_s; Model_Name_ns};
+    l_ind = [l_ind_s; l_ind_ns];
+    CL_AIC_vals = [CL_AIC_vals_s; CL_AIC_vals_ns];
+    Model_Parameters = [Model_Parameters_s; Model_Parameters_ns];
+    Parameter_Estimates = {Param_Estimates_s_str; Param_Estimates_ns_str};
+    
+    Results_Table = table(River, Scenario, Model, l_ind, CL_AIC_vals, Model_Parameters, Parameter_Estimates, ...
+        'VariableNames', {'River', 'Scenario', 'Model', 'l_ind', 'CL_AIC', 'Model_Parameters', 'Parameter_Estimates'});
+    
+    %% Construct TDF Surfaces Using Stationary and Best Non-Stationary Models
+    
+    % Non-Stationary Model Parameters
+    params_est_ns = best_ns_model.params_est;
+    mu_model_ns = find(strcmp(mu_models, best_ns_model.mu_model));
+    sigma_model_ns = find(strcmp(sigma_models, best_ns_model.sigma_model));
+    
+    % Reconstruct parameter indices for the non-stationary model
+    idx = 1;
+    % Parameters for mu
+    switch mu_model_ns
+        case 1 % Stationary
+            mu0_est_ns = params_est_ns(idx:idx+D-1); idx = idx + D;
+            mu1_est_ns = zeros(1, D);
+            mu2_est_ns = zeros(1, D);
+        case 2 % Linear
+            mu0_est_ns = params_est_ns(idx:idx+D-1); idx = idx + D;
+            mu1_est_ns = params_est_ns(idx:idx+D-1); idx = idx + D;
+            mu2_est_ns = zeros(1, D);
+        case 3 % Quadratic
+            mu0_est_ns = params_est_ns(idx:idx+D-1); idx = idx + D;
+            mu1_est_ns = params_est_ns(idx:idx+D-1); idx = idx + D;
+            mu2_est_ns = params_est_ns(idx:idx+D-1); idx = idx + D;
+    end
+    
+    % Parameters for sigma
+    switch sigma_model_ns
+        case 1 % Stationary
+            sigma0_est_ns = params_est_ns(idx:idx+D-1); idx = idx + D;
+            sigma1_est_ns = zeros(1, D);
+        case 2 % Linear
+            sigma0_est_ns = params_est_ns(idx:idx+D-1); idx = idx + D;
+            sigma1_est_ns = params_est_ns(idx:idx+D-1); idx = idx + D;
+    end
+    
+    % Common parameters
+    kappa_est_ns = params_est_ns(idx); idx = idx + 1;
+    theta_est_ns = params_est_ns(idx); idx = idx + 1;
+    eta_est_ns = params_est_ns(idx);
+    
+    % Stationary Model Parameters
+    params_est_s = stationary_model.params_est;
+    % Reconstruct parameter indices for the stationary model
+    idx = 1;
+    % Parameters for mu
+    mu0_est_s = params_est_s(idx:idx+D-1); idx = idx + D;
+    mu1_est_s = zeros(1, D);
+    mu2_est_s = zeros(1, D);
+    
+    % Parameters for sigma
+    sigma0_est_s = params_est_s(idx:idx+D-1); idx = idx + D;
+    sigma1_est_s = zeros(1, D);
+    
+    % Common parameters
+    kappa_est_s = params_est_s(idx); idx = idx + 1;
+    theta_est_s = params_est_s(idx); idx = idx + 1;
+    eta_est_s = params_est_s(idx);
+    
+    % Compute location and scale parameters for years 1979 to 2020
+    years_full = (1979:2020)';
+    U_full = years_full - unique_years_valid(1);
+    num_years_full = length(years_full);
+    
+    % Prepare grids for years and durations
+    [years_grid, durations_grid] = meshgrid(years_full, durations);
+    
+    % Compute mu and sigma for each duration and year for non-stationary model
+    mu_grid_ns = zeros(num_years_full, D);
+    sigma_grid_ns = zeros(num_years_full, D);
+    for k_idx = 1:D
+        for l = 1:num_years_full
+            U_l = U_full(l);
+            % Compute mu
+            mu_grid_ns(l, k_idx) = mu0_est_ns(k_idx) + mu1_est_ns(k_idx) * U_l + mu2_est_ns(k_idx) * U_l^2;
+            % Compute sigma
+            sigma_grid_ns(l, k_idx) = sigma0_est_ns(k_idx) + sigma1_est_ns(k_idx) * U_l;
+        end
+    end
+    
+    % Compute mu and sigma for stationary model
+    mu_grid_s = repmat(mu0_est_s, num_years_full, 1);
+    sigma_grid_s = repmat(sigma0_est_s, num_years_full, 1);
+    
+    % Compute b(d) for each duration
+    b_d_ns = (durations + theta_est_ns).^eta_est_ns;
+    b_d_s = (durations + theta_est_s).^eta_est_s;
+    
+    % Compute T_R_d for each return period for non-stationary and stationary models
+    for r_idx = 1:length(R_values)
+        R = R_values(r_idx);
+        t_R_d_ns = zeros(num_years_full, D);
+        t_R_d_s = zeros(num_years_full, D);
+        for k_idx = 1:D
+            for l = 1:num_years_full
+                % Non-Stationary Model
+                mu_d_ns = mu_grid_ns(l, k_idx);
+                sigma_d_ns = sigma_grid_ns(l, k_idx);
+                % Compute a_R
+                a_R_ns = mu_d_ns - (sigma_d_ns / kappa_est_ns) * (1 - (-log(1 - (1 / R)))^(-kappa_est_ns));
+                % Compute t_R_d
+                t_R_d_ns(l, k_idx) = a_R_ns / b_d_ns(k_idx);
+                
+                % Stationary Model
+                mu_d_s = mu_grid_s(l, k_idx);
+                sigma_d_s = sigma_grid_s(l, k_idx);
+                % Compute a_R
+                a_R_s = mu_d_s - (sigma_d_s / kappa_est_s) * (1 - (-log(1 - (1 / R)))^(-kappa_est_s));
+                % Compute t_R_d
+                t_R_d_s(l, k_idx) = a_R_s / b_d_s(k_idx);
+            end
+        end
+        % Store t_R_d for this return period
+        T_return_levels_ns{r_idx} = t_R_d_ns;
+        T_return_levels_s{r_idx} = t_R_d_s;
+    end
+    % Store T_return_levels for this river
+    All_T_return_levels_ns{river_idx} = T_return_levels_ns;
+    All_T_return_levels_s{river_idx} = T_return_levels_s;
+    
+    % Plot the surfaces (only plotting non-stationary model to avoid clutter)
+    subplot(rows, cols, river_idx);
+    hold on;
+    % For each return period, plot a surface
+    for r_idx = 1:length(R_values)
+        R = R_values(r_idx);
+        t_R_d_ns = T_return_levels_ns{r_idx}; % N x D
+        t_R_d_T_ns = t_R_d_ns'; % Transpose to D x N
+        % Create a surface plot
+        h_surf = surf(years_grid, durations_grid, t_R_d_T_ns, 'EdgeColor', 'none', 'FaceAlpha', 0.5, 'FaceColor', colors(r_idx,:));
+        if river_idx == 1
+            h_return(r_idx) = h_surf; % Collect handles from first river
+        end
+    end
+    view(3);
+    % Adjust font size based on number of subplots
+    if num_rivers > 9
+        fontSize = 8;
+    else
+        fontSize = 10;
+    end
+    xlabel('Year', 'FontSize', fontSize);
+    ylabel('Duration (days)', 'FontSize', fontSize);
+    zlabel('Temperature (°C)', 'FontSize', fontSize);
+    title(river_name, 'Interpreter', 'none', 'FontSize', fontSize);
+    grid on;
+    % Adjust axis label font sizes
+    set(gca, 'FontSize', fontSize);
+    hold off;
+    
+    % Store results for all rivers
+    All_Rivers_Results_Table = [All_Rivers_Results_Table; Results_Table];
+end % End of rivers loop
+
+% Create a common legend outside the subplots
+% Adjust legend position and orientation
+figure(gcf); % Ensure we're on the current figure
+hL = legend(h_return, legend_labels, 'Orientation', 'horizontal');
+newPosition = [0.5, 0.02, 0, 0];
+newUnits = 'normalized';
+set(hL, 'Position', newPosition, 'Units', newUnits, 'Interpreter', 'none');
+
+% Adjust figure layout
+sgtitle('Temperature Duration Frequency Surfaces - Non-Stationary Models');
+
+% Save the combined table
+writetable(All_Rivers_Results_Table, 'All_Rivers_Results_Table.xlsx');
+
+% Adjust figure position to make room for the legend
+set(gcf, 'Position', [100, 100, 1500, 900]);
+
+%% Generate 2D Plots of Temperature vs. Duration for Selected Years
+
+% Specify the years to analyze
+selected_years = [1980, 2000, 2020];
+
+% Specify the return period to plot
+R_plot = 10; % You can change this to any desired return period
+
+% Create a new figure for the 2D plots
+figure('Name', 'Temperature Duration Frequency', 'Position', [100, 100, 1500, 800]);
+
+% Reset the river index for plotting
+river_idx_plot = 1;
+
+% Initialize variables for legend
+legend_entries = {};
+legend_handles = [];
+
+% num_rivers = length(river_folders);
+
+% Loop over rivers again
+for river_idx = 1:num_rivers
+    river_folder = river_folders{river_idx};
+    river_name = strrep(strrep(river_folder, '0-', ''), '_DataGrass', '');
+    disp(['Plotting 2D curves for river: ', river_name]);
+    
+    % Check if data was processed for this river
+    if ~exist('All_T_return_levels_ns', 'var') || length(All_T_return_levels_ns) < river_idx || isempty(All_T_return_levels_ns{river_idx})
+        continue;
+    end
+    
+    T_return_levels_ns = All_T_return_levels_ns{river_idx};
+    T_return_levels_s = All_T_return_levels_s{river_idx};
+    
+    % Find the index of the desired return period
+    R_idx = find(R_values == R_plot);
+    if isempty(R_idx)
+        warning('Return period R = %d not found. Skipping river %s.', R_plot, river_name);
+        continue;
+    end
+    
+    % Get the T_R_d data for the specified return period
+    t_R_d_ns = T_return_levels_ns{R_idx}; % num_years_full x D
+    t_R_d_s = T_return_levels_s{R_idx}; % num_years_full x D
+    
+    % Find the indices of the selected years
+    [~, year_indices] = ismember(selected_years, years_full);
+    valid_years = year_indices > 0;
+    if any(~valid_years)
+        warning('Some selected years are not available for river %s.', river_name);
+        year_indices = year_indices(valid_years);
+        selected_years = selected_years(valid_years);
+    end
+    
+    if isempty(year_indices)
+        continue;
+    end
+    
+    % Extract the temperature data for the selected years
+    t_selected_ns = t_R_d_ns(year_indices, :); % selected_years x D
+    t_selected_s = t_R_d_s(1, :); % 1 x D (same for all years in stationary model)
+    
+    % Create subplot for the river
+    subplot(rows, cols, river_idx_plot);
+    hold on;
+    
+    % Adjust font size based on number of subplots
+    if num_rivers > 9
+        fontSize = 8;
+    else
+        fontSize = 10;
+    end
+    
+    % Plot temperature vs. duration for each selected year - Non-Stationary
+    for y_idx = 1:length(selected_years)
+        h_plot = plot(durations(1:7), t_selected_ns(y_idx, 1:7), '-o', 'DisplayName', [num2str(selected_years(y_idx)), ' NS']);
+        % Collect legend entries from the first subplot
+        if river_idx_plot == 1
+            legend_entries{end+1} = [num2str(selected_years(y_idx)), ' NS'];
+            legend_handles(end+1) = h_plot;
+        end
+    end
+    
+    % Plot temperature vs. duration for stationary model (same for all years)
+    h_plot_s = plot(durations(1:7), t_selected_s(1:7), '--s', 'DisplayName', 'Stationary');
+    if river_idx_plot == 1
+        legend_entries{end+1} = 'Stationary';
+        legend_handles(end+1) = h_plot_s;
+    end
+    
+    xlabel('Duration (days)', 'FontSize', fontSize);
+    ylabel('Temperature (°C)', 'FontSize', fontSize);
+    title(river_name, 'Interpreter', 'none', 'FontSize', fontSize);
+    grid on;
+    % Adjust axis label font sizes
+    set(gca, 'FontSize', fontSize);
+    hold off;
+    
+    river_idx_plot = river_idx_plot + 1;
+end
+
+% Create a common legend outside the subplots
+% Adjust legend position and orientation
+% Create a new axes for the legend
+figure(gcf); % Make sure we're on the current figure
+hL = legend(legend_handles, legend_entries, 'Orientation', 'horizontal');
+newPosition = [0.5, 0.02, 0, 0];
+newUnits = 'normalized';
+set(hL, 'Position', newPosition, 'Units', newUnits, 'Interpreter', 'none');
+
+% Adjust figure layout
+sgtitle(sprintf('TDF (Retrun Period = %d)', R_plot));
+
+% Adjust figure position to make room for the legend
+set(gcf, 'Position', [100, 100, 1500, 900]);
+%% Functions
+
+% Function to compute the negative composite log-likelihood
+function neg_cll = compute_neg_cll(params, t_max_avg, U, durations, D, n, mu_model, sigma_model)
+    neg_cll = 0;
+    idx = 1;
+    % Parameters for mu
+    switch mu_model
+        case 1 % Stationary
+            mu0 = params(idx:idx+D-1); idx = idx + D;
+            mu1 = zeros(1, D);
+            mu2 = zeros(1, D);
+        case 2 % Linear
+            mu0 = params(idx:idx+D-1); idx = idx + D;
+            mu1 = params(idx:idx+D-1); idx = idx + D;
+            mu2 = zeros(1, D);
+        case 3 % Quadratic
+            mu0 = params(idx:idx+D-1); idx = idx + D;
+            mu1 = params(idx:idx+D-1); idx = idx + D;
+            mu2 = params(idx:idx+D-1); idx = idx + D;
+    end
+    % Parameters for sigma
+    switch sigma_model
+        case 1 % Stationary
+            sigma0 = params(idx:idx+D-1); idx = idx + D;
+            sigma1 = zeros(1, D);
+        case 2 % Linear
+            sigma0 = params(idx:idx+D-1); idx = idx + D;
+            sigma1 = params(idx:idx+D-1); idx = idx + D;
+    end
+    % Common parameters
+    kappa = params(idx); idx = idx + 1;
+    theta = params(idx); idx = idx + 1;
+    eta = params(idx);
+    
+    for l = 1:n
+        U_l = U(l);
+        for k = 1:D
+            % Compute b(d) and Y(l,d)
+            b_d = (durations(k) + theta)^eta;
+            Y = t_max_avg(l, k) * b_d;
+            
+            % Compute mu(l,d)
+            mu = mu0(k) + mu1(k) * U_l + mu2(k) * U_l^2;
+            sigma = sigma0(k) + sigma1(k) * U_l;
+            
+            % Check for sigma > 0
+            if sigma <= 0
+                neg_cll = neg_cll + 1e6;
+                continue;
+            end
+            
+            % Compute standardized variable
+            t = (Y - mu) / sigma;
+            epsilon = 1e-10; % Small value to avoid numerical issues
+            
+            % Compute log-likelihood
+            if abs(kappa) > epsilon
+                xi_t = 1 + kappa * t;
+                if xi_t <= 0
+                    neg_cll = neg_cll + 1e6;
+                    continue;
+                end
+                ll = -log(sigma) - (1 + 1 / kappa) * log(xi_t) - xi_t^(-1 / kappa);
+            else % kappa ~ 0, use Gumbel
+                ll = -log(sigma) - t - exp(-t);
+            end
+            ll = ll + eta * log(durations(k) + theta);
+            
+            if isinf(ll) || isnan(ll)
+                neg_cll = neg_cll + 1e6;
+            else
+                neg_cll = neg_cll - ll; % Negative log-likelihood
+            end
+        end
+    end
+end
+%%
+% Function to compute CL-AIC and CL-BIC using composite likelihood
+function [CL_AIC, CL_BIC] = compute_claic_clbic(params_est, t_max_avg, U, durations, D, n, mu_model, sigma_model, hessian)
+    num_params = length(params_est);
+    % Compute maximized log-likelihood
+    neg_cll = compute_neg_cll(params_est, t_max_avg, U, durations, D, n, mu_model, sigma_model);
+    max_log_likelihood = -neg_cll;
+
+    % Use the Hessian from fmincon as H(ψ̂)
+    H = hessian;
+
+    % Compute J(ψ̂)
+    J = zeros(num_params, num_params);
+
+    % Compute gradient vectors and accumulate J
+    for l = 1:n
+        U_l = U(l);
+        u_l = zeros(num_params, 1);
+        for k = 1:D
+            t_max_avg_lk = t_max_avg(l, k);
+            duration_k = durations(k);
+            % Compute gradient u(ψ̂; t_{kl})
+            u_lk = compute_gradient(params_est, t_max_avg_lk, U_l, duration_k, mu_model, sigma_model, D, durations);
+            % Accumulate u(ψ̂; t_l)
+            u_l = u_l + u_lk;
+        end
+        % Accumulate J (summing over l)
+        J = J + (u_l * u_l');
+    end
+
+    % Average J over n
+    J = J / n;
+
+    % Compute effective number of parameters
+    dim_psi = trace(J * inv(H));
+
+    % Compute CL-AIC and CL-BIC
+    CL_AIC = -2 * max_log_likelihood + 2 * dim_psi;
+    CL_BIC = -2 * max_log_likelihood + dim_psi * log(n);
+end
+%%
+% Function to compute the gradient of the individual log-likelihood term
+function u = compute_gradient(params, t_max_avg_lk, U_l, duration_k, mu_model, sigma_model, D, durations)
+    % Compute the gradient of the log-likelihood term with respect to params
+    % Numerically estimate the gradient using finite differences
+    num_params = length(params);
+    u = zeros(num_params, 1);
+    delta = sqrt(eps);
+
+    ll0 = loglikelihood_individual(params, t_max_avg_lk, U_l, duration_k, mu_model, sigma_model, D, durations);
+
+    for i = 1:num_params
+        params_i = params;
+        delta_i = delta * max(abs(params(i)), 1);
+        params_i(i) = params(i) + delta_i;
+        ll_i = loglikelihood_individual(params_i, t_max_avg_lk, U_l, duration_k, mu_model, sigma_model, D, durations);
+        u(i) = (ll_i - ll0) / delta_i;
+    end
+end
+
+% Function to compute the individual log-likelihood term
+function ll = loglikelihood_individual(params, t_max_avg_lk, U_l, duration_k, mu_model, sigma_model, D, durations)
+    idx = 1;
+    % Extract parameters
+    % Parameters for mu
+    switch mu_model
+        case 1 % Stationary
+            mu0 = params(idx:idx+D-1); idx = idx + D;
+            mu1 = zeros(1, D);
+            mu2 = zeros(1, D);
+        case 2 % Linear
+            mu0 = params(idx:idx+D-1); idx = idx + D;
+            mu1 = params(idx:idx+D-1); idx = idx + D;
+            mu2 = zeros(1, D);
+        case 3 % Quadratic
+            mu0 = params(idx:idx+D-1); idx = idx + D;
+            mu1 = params(idx:idx+D-1); idx = idx + D;
+            mu2 = params(idx:idx+D-1); idx = idx + D;
+    end
+    % Parameters for sigma
+    switch sigma_model
+        case 1 % Stationary
+            sigma0 = params(idx:idx+D-1); idx = idx + D;
+            sigma1 = zeros(1, D);
+        case 2 % Linear
+            sigma0 = params(idx:idx+D-1); idx = idx + D;
+            sigma1 = params(idx:idx+D-1); idx = idx + D;
+    end
+    % Common parameters
+    kappa = params(idx); idx = idx + 1;
+    theta = params(idx); idx = idx + 1;
+    eta = params(idx);
+
+    % Find the index k corresponding to duration_k
+    k = find(durations == duration_k);
+    if isempty(k)
+        error('Duration %d not found in durations array', duration_k);
+    end
+
+    % Compute b(d) and Y(l,d)
+    b_d = (duration_k + theta)^eta;
+    Y = t_max_avg_lk * b_d;
+
+    % Compute mu(l,d)
+    mu = mu0(k) + mu1(k) * U_l + mu2(k) * U_l^2;
+    sigma = sigma0(k) + sigma1(k) * U_l;
+
+    % Check for sigma > 0
+    if sigma <= 0
+        ll = -Inf;
+        return;
+    end
+
+    % Compute standardized variable
+    t = (Y - mu) / sigma;
+    epsilon = 1e-10; % Small value to avoid numerical issues
+
+    % Compute log-likelihood
+    if abs(kappa) > epsilon
+        xi_t = 1 + kappa * t;
+        if xi_t <= 0
+            ll = -Inf;
+            return;
+        end
+        ll = -log(sigma) - (1 + 1 / kappa) * log(xi_t) - xi_t^(-1 / kappa);
+    else % kappa ~ 0, use Gumbel
+        ll = -log(sigma) - t - exp(-t);
+    end
+    ll = ll + eta * log(duration_k + theta);
+end
+
