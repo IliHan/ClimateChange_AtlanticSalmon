@@ -1,4 +1,4 @@
-# Nonstationary modelling of riverine heatwave frequency
+# Nonstationary frequency modelling for riverine heatwave events
 
 [![DOI](https://zenodo.org/badge/986552679.svg)](https://doi.org/10.5281/zenodo.15468304)
 
