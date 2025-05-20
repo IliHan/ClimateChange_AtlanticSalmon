@@ -64,10 +64,10 @@ Each river has its own folder, named after the river. Inside each folder:
 
 **In R, run the following scripts in order:**
 
-1. `Identify_SummerRH.r`  
+1. `0_Identify_SummerRH.r`  
    - Identifies heatwaves across scenarios and periods.
 
-2. `Correlation.r`  
+2. `0_Correlation.r`  
    - Performs correlation analysis between heatwave frequency and climate indices (AO, NAO, SOI).
 
 3. `Figure_6&7.r`  
