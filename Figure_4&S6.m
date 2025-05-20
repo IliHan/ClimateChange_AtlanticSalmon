@@ -26,13 +26,13 @@ function compare_drought_discharge_subplots_twoPeriods_AveragedModels()
     era5_period = "P_1979_01_01_2020_12_31";
     era5_time   = datetime(1979,1,1) : days(1) : datetime(2020,12,31);
 
-    % FUTURE #1 => broad 2020–2060, we want 2030–2060
+    % FUTURE #1 =>  2020–2060, we want 2030–2060
     future_period_1 = "P_2020_01_01_2060_12_31";
     mbcn_time_1      = datetime(2020,1,1) : days(1) : datetime(2060,12,31);
     start_sub1       = datetime(2030,1,1);
     end_sub1         = datetime(2060,12,31);
 
-    % FUTURE #2 => broad 2061–2099, we want 2061–2090
+    % FUTURE #2 =>  2061–2099, we want 2061–2090
     future_period_2 = "P_2061_01_01_2099_12_31";
     mbcn_time_2      = datetime(2061,1,1) : days(1) : datetime(2090,12,31);
     start_sub2       = datetime(2061,1,1);
@@ -248,9 +248,9 @@ function compare_drought_discharge_subplots_twoPeriods_AveragedModels()
     end
 
     sgtitle('Jul-Aug Interannual Mean');
-    saveas(fig_box, fullfile(output_dir,'AllRivers_BoxPlot_5Boxes_TwoScenarios.png'));
+    saveas(fig_box, fullfile(output_dir,'AllRivers_BoxPlot_TwoScenarios.png'));
 
-    %% ========== PERCENT-CHANGE FIGURE: 4 bars per river (Near-370, Near-585, Far-370, Far-585) ==========
+    %% ========== PERCENT-CHANGE FIGURE (Near-370, Near-585, Far-370, Far-585) ==========
 
     fig_pct = figure('Name','Percent Change (Two Scenarios)','Position',get(0,'Screensize'));
 
