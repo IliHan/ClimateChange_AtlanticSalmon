@@ -77,5 +77,3 @@ Each river has its own folder, named after the river. Inside each folder:
    - Generates Figures 8 and 9 for the **best multi-covariate models**.
 
 ---
-
-Let me know if you'd like to include links to datasets, contact info, or licensing info.
