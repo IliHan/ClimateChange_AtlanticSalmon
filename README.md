@@ -8,7 +8,7 @@ This repository contains all datasets and scripts related to the following open-
 
 ## Summary
 
-This repository provides simulated daily discharge and water temperature (Tw) time series from **1979 to 2100** for **35 Atlantic salmon rivers** across northeastern Canada and the northeastern United States.
+This repository provides simulated daily discharge and water temperature (Tw) time series from **1979 to 2100** for **35 Atlantic salmon rivers** across northeastern Canada and United States.
 
 Future projections are based on six General Circulation Models (GCMs) from the CMIP6 ensemble:
 
