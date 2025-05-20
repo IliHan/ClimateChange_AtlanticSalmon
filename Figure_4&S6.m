@@ -1,4 +1,4 @@
-%%%%%%%%%%%%%%%%% Function to compute boxplots and percent change in discharge warmest months (Figure 4) %%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%% Function to compute boxplots and percent change in discharge warmest months (Figure 4 and S6) %%%%%%%%%%%%%
 
 function compare_drought_discharge_subplots_twoPeriods_AveragedModels()
 
