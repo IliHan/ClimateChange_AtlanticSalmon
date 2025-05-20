@@ -1,9 +1,9 @@
 close all
 clear all
-addpath('C:/Users/Utilisateur/OneDrive - INRS/Documents/ilias/Woolway_Nature_MatlabCode/Matlab-Library-2016-master/Matlab-Library-2016-master/colormaps/cbrewer/cbrewer'); % https://uk.mathworks.com/matlabcentral/fileexchange/34087-cbrewer-colorbrewer-schemes-for-matlab
-addpath('C:/Users/Utilisateur/OneDrive - INRS/Documents/ilias/Woolway_Nature_MatlabCode/m_map1.4/m_map'); % https://www.eoas.ubc.ca/~rich/map.html
-addpath('C:/Users/Utilisateur/OneDrive - INRS/Documents/ilias/Woolway_Nature_MatlabCode/raacampbell-shadedErrorBar-aa6d919');
-addpath('C:/Users/Utilisateur/OneDrive - INRS/Documents/ilias/Woolway_Nature_MatlabCode/textLoc') %https://www.mathworks.com/matlabcentral/fileexchange/17151-textloc
+addpath('C:/Users/Utilisateur/OneDrive - INRS/Documents/ilias/Matlab-Library-2016-master/Matlab-Library-2016-master/colormaps/cbrewer/cbrewer'); % https://uk.mathworks.com/matlabcentral/fileexchange/34087-cbrewer-colorbrewer-schemes-for-matlab
+addpath('C:/Users/Utilisateur/OneDrive - INRS/Documents/ilias/m_map1.4/m_map'); % https://www.eoas.ubc.ca/~rich/map.html
+addpath('C:/Users/Utilisateur/OneDrive - INRS/Documents/ilias/raacampbell-shadedErrorBar-aa6d919');
+addpath('C:/Users/Utilisateur/OneDrive - INRS/Documents/ilias/textLoc') %https://www.mathworks.com/matlabcentral/fileexchange/17151-textloc
 
 % Set colors for plots
 ireds = cbrewer('seq','Reds',9);
@@ -12,7 +12,7 @@ set2 = cbrewer('qual','Set2',8);
 CT1 = cbrewer('seq','YlOrRd',9);
 
 % Change this to the directory in which the data is stored
-main_folder = 'C:/Users/Utilisateur/OneDrive - INRS/Documents/ilias/Woolway_Nature_MatlabCode';
+main_folder = 'C:/Users/Utilisateur/OneDrive - INRS/Documents';
 
 % Load lake information file
 ifid = fopen([main_folder '/river_characteristics.csv']);
