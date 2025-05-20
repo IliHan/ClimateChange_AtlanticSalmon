@@ -1,10 +1,6 @@
 library(dplyr)
 library(ggpubr)
 library(heatwaveR)
-
-
-# Load necessary libraries
-library(dplyr)
 library(readxl)
 
 # Read the Excel file
@@ -35,7 +31,7 @@ tMax_clim <- ts2clm(data = df, y = temp, climatologyPeriod = c("1980-01-01", "20
 # The tMin exceedance
 tMin_exc <- exceedance(data = df, y = temp, threshold =20)$threshold # nolint #, minDuration = 2, maxGap = 0
 
-# The 90th percentile threshold # nolint
+# The 90th percentile threshold 
 events <- detect_event(data = tMax_clim, y = temp, minDuration = 5, maxGap = 2, categories = TRUE, climatology = TRUE, S=FALSE)
 
 # The code to create a bubble plot for the heatwave results
