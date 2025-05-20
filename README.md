@@ -2,13 +2,13 @@
 
 [![DOI](https://zenodo.org/badge/986552679.svg)](https://doi.org/10.5281/zenodo.15468304)
 
-This repository contains all scripts related to the following open-access article:  
+This repository contains all datasets and scripts related to the following open-access article:  
 **Hani et al., 2025b**  
 *Past and Future Hydrological and Water Temperature Shifts in Atlantic Salmon Rivers in Northeastern America (1979–2100)*
 
 ## Summary
 
-This dataset provides simulated daily discharge and water temperature (Tw) time series from **1979 to 2100** for **35 Atlantic salmon rivers** across northeastern Canada and the northeastern United States.
+This repository provides simulated daily discharge and water temperature (Tw) time series from **1979 to 2100** for **35 Atlantic salmon rivers** across northeastern Canada and the northeastern United States.
 
 Future projections are based on six General Circulation Models (GCMs) from the CMIP6 ensemble:
 
@@ -24,8 +24,7 @@ Two Shared Socioeconomic Pathways are considered:
 - **SSP3-7.0**  
 - **SSP5-8.5**
 
-In addition, the dataset includes **modeled riverine heatwave frequencies** derived using a **nonstationary frequency analysis** approach.  
-**Parametric bootstrapping** was applied to provide uncertainty estimates.
+In addition, the dataset includes codes to reproduce the temporal evolution of **riverine heatwave events** within a **nonstationary modeling framework**. A frequency analysis approach was developed for this purpose, incorporating **climate indices** and the **temporal trend** as covariates to account for long-term trends and variability. To assess the robustness of the model estimates, **parametric bootstrapping** was employed, providing confidence intervals and uncertainty estimates for the predicted heatwave frequencies.
 
 ---
 
