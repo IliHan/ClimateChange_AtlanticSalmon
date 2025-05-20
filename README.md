@@ -24,7 +24,7 @@ Two Shared Socioeconomic Pathways are considered:
 - **SSP3-7.0**  
 - **SSP5-8.5**
 
-In addition, the dataset includes codes to reproduce the temporal evolution of **riverine heatwave events** within a **nonstationary modeling framework**. A frequency analysis approach was developed for this purpose, incorporating **climate indices** and the **temporal trend** as covariates to account for long-term trends and variability. To assess the robustness of the model estimates, **parametric bootstrapping** was employed, providing confidence intervals and uncertainty estimates for the predicted heatwave frequencies.
+In addition, the dataset includes codes to reproduce the temporal evolution of **riverine heatwave events** within a **nonstationary modeling framework**. A frequency analysis approach was developed for this purpose, incorporating **climate indices** and the **temporal trend** as covariates to account for long-term trends and variability. To assess the robustness of the model estimates, **parametric bootstrapping** was employed, providing confidence intervals and uncertainty estimates for the predicted heatwaves frequency.
 
 ---
 
