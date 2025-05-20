@@ -121,7 +121,7 @@ for s = 1:numel(scenarios)
     % lg = legend(model_handles_discharge_po, model_labels, ...
     %             'Interpreter','none','FontSize',12, ...
     %             'Orientation','horizontal','Location','eastoutside');
-    saveas(gcf, fullfile(plots_dir, sprintf('All_Discharge_2040-2060_PoE_%s.png',scenario)));
+    saveas(gcf, fullfile(plots_dir, sprintf('All_Discharge_2030-2060_PoE_%s.png',scenario)));
     close(gcf);
 
 
@@ -206,9 +206,6 @@ for s = 1:numel(scenarios)
     % lg = legend(model_handles_temperature_po, model_labels_temperature, ...
     %             'Interpreter','none','FontSize',12, ...
     %             'Orientation','horizontal','Location','eastoutside');
-    saveas(gcf, fullfile(plots_dir, sprintf('All_Temperature_2040-2060_PoE_%s.png',scenario)));
+    saveas(gcf, fullfile(plots_dir, sprintf('All_Temperature_2030-2060_PoE_%s.png',scenario)));
     close(gcf);
-
-    %% (Leave the interannual-mean sections unchanged, or apply similar tiledlayout tweaks if desired.)
-
 end
