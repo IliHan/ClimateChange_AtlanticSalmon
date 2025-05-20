@@ -13,6 +13,7 @@ Data Organization:
 -  For each river, the CSV files include:
     -  globo_rhw_'rivername'_ssp370(585) for water temperature.
     -  globo_rhw_Q_'rivername'_ssp370(585) for discharge.
+      
 Figure Reproducibility:
 -  Figures 2, 3, S4, and S5
     Run Figures_2&3&S4&S5.r. This script uses the above .csv files for each river and scenario to reproduce the probability of exceedance plots.
