@@ -3,8 +3,8 @@
 [![DOI](https://zenodo.org/badge/986552679.svg)](https://doi.org/10.5281/zenodo.15468304)
 
 This repository contains all datasets and scripts related to the following open-access article:  
-**Hani et al., 2025b**  
 *Past and Future Hydrological and Water Temperature Shifts in Atlantic Salmon Rivers in Northeastern America (1979–2100)*
+**Hani et al., 2025b**  
 
 ## Summary
 
