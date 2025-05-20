@@ -1,6 +1,5 @@
 # ClimateChange_AtlanticSalmon
 [![DOI](https://zenodo.org/badge/986552679.svg)](https://doi.org/10.5281/zenodo.15468304)
-
 Supplementary Materials (Times series + Figures_Codes)
 
 Discharge and water temperature simulations were generated using CEQUEAU, a deterministic semi-distributed hydrological and thermal model. CEQUEAU was applied to 35 Atlantic salmon rivers across northeastern Canada and the northeastern United States to simulate daily mean discharge and water temperature under both historical (1979–2020) and future (2030–2100) climate conditions.
