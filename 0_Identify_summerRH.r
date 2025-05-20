@@ -49,7 +49,7 @@ model_fields <- c(
 scenarios <- c("ssp370", "ssp585")
 
 # Define the base path
-base_path <- "C:/Users/Utilisateur/OneDrive - INRS/Documents/ilias/0-Cequeau_Cal"
+base_path <- "C:/Users/Utilisateur/OneDrive - INRS/Documents"
 
 # Define a fixed climatology period to be used for all analyses
 fixed_climatology_start <- as.Date("1980-01-01")
@@ -74,14 +74,6 @@ periods <- list(
   )
 )
 
-# Define default and specific threshold values for rivers
-default_threshold <- 20
-threshold_adjustments <- list(
-  '0-Carruthers_DataGrass' = 16,
-  '0-Nouvelle_DataGrass' = 18,
-  '0-Reid_DataGrass' = 19,
-  '0-West_DataGrass' = 16
-)
 
 ############################################################
 # Helper Functions
